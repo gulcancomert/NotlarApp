@@ -1,0 +1,7 @@
+﻿# Sanal ortam ve derleme çıktıları GİTMESİN
+venv/
+dist/
+build/
+*.spec
+__pycache__/
+*.pyc

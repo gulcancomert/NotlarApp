@@ -14,13 +14,12 @@ from PySide6.QtWidgets import (
 
 # ---------- Ayarlar ----------
 APP_NAME = "NotlarApp"
-# Kayıt klasörü (Windows): Belgeler/NotlarApp  | İstersen Masaüstü/NotlarApp yapabilirsin
+
 NOTES_DIR = Path.home() / ("Documents" if os.name == "nt" else "") / "NotlarApp"
 NOTES_DIR.mkdir(parents=True, exist_ok=True)
 
-SEPARATOR = "\n-------------------------------\n\n"  # Ctrl+I ile eklenecek ayraç (opsiyonel)
+SEPARATOR = "\n-------------------------------\n\n"  
 
-# ---------- Boş alana tıklayınca seçim temizleyen liste ----------
 class NoteList(QListWidget):
     def mousePressEvent(self, event):
         idx = self.indexAt(event.position().toPoint())
@@ -28,7 +27,7 @@ class NoteList(QListWidget):
             self.clearSelection()
         super().mousePressEvent(event)
 
-# ---------- Pano Yakalama ----------
+
 class CaptureWorker(QObject):
     captured_text = Signal(str)
     status = Signal(str)
@@ -90,7 +89,7 @@ class CaptureWorker(QObject):
         except Exception as e:
             self.status.emit(f"Hata (hotkey): {e}")
 
-# ---------- Yardımcılar ----------
+
 def safe_note_path(name: str) -> Path:
     n = (name or "Yeni Not").strip()
     if not n.lower().endswith(".txt"):
@@ -103,7 +102,7 @@ def highlight_sidecar(p: Path) -> Path:
     # Notlar.txt -> Notlar.txt.highlights.json
     return p.with_suffix(p.suffix + ".highlights.json")
 
-# ---------- Ana Pencere ----------
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -118,15 +117,14 @@ class MainWindow(QMainWindow):
         self.save_timer.setSingleShot(True)
         self.save_timer.setInterval(600)  # yazarken 0.6sn sonra otomatik kaydet
 
-        # son yapıştırma filtresi (çift eklemeyi engelleme)
+  
         self._last_paste = ""
         self._last_paste_ts = 0.0
 
-        # --- UI yerleşimi
         central = QWidget(self); self.setCentralWidget(central)
         root = QVBoxLayout(central); root.setContentsMargins(10,10,10,10); root.setSpacing(8)
 
-        # Üst bar: Ekle / Sil / Yeniden Adlandır / Klasörü Aç + Capture Başlat/Durdur
+     
         top = QHBoxLayout(); top.setSpacing(8)
         self.btn_new = QPushButton("Ekle")
         self.btn_del = QPushButton("Sil")
@@ -140,7 +138,6 @@ class MainWindow(QMainWindow):
         top.addWidget(self.btn_start); top.addWidget(self.btn_stop)
         root.addLayout(top)
 
-        # --- Renk paleti
         palette = QHBoxLayout(); palette.setSpacing(6)
         palette.addWidget(QLabel("Renk:"))
         self.palette_colors = [
@@ -162,7 +159,7 @@ class MainWindow(QMainWindow):
         palette.addStretch(1)
         root.addLayout(palette)
 
-        # Orta: Sol dosya listesi + sağ not defteri (QPlainTextEdit)
+     
         mid = QHBoxLayout(); mid.setSpacing(10); root.addLayout(mid, 1)
 
         self.listw = NoteList()
@@ -185,17 +182,17 @@ class MainWindow(QMainWindow):
         self.editor.setFont(f)
         mid.addWidget(self.editor, 1)
 
-        # Alt durum
+
         self.status = QLabel("Hazır")
         root.addWidget(self.status)
 
-        # Kısayol: ayraç ekle (opsiyonel)
+       
         act_sep = QAction(self)
         act_sep.setShortcut(QKeySequence("Ctrl+I"))
         act_sep.triggered.connect(self.insert_separator)
         self.addAction(act_sep)
 
-        # Undo / Redo kısayolları (Ctrl+Z, Ctrl+Y)
+       
         undo_act = QAction(self)
         undo_act.setShortcut(QKeySequence.Undo)   # Ctrl+Z
         undo_act.triggered.connect(self.editor.undo)
@@ -206,10 +203,10 @@ class MainWindow(QMainWindow):
         redo_act.triggered.connect(self.editor.redo)
         self.addAction(redo_act)
 
-        # Belge düzeyinde undo/redo açık
+       
         self.editor.document().setUndoRedoEnabled(True)
 
-        # Dark tema
+     
         self.setStyleSheet("""
             QMainWindow, QWidget { background: #121212; color: #eee; }
             QPlainTextEdit { background:#1b1b1b; border:1px solid #333; color:#eee; }
@@ -219,27 +216,26 @@ class MainWindow(QMainWindow):
             QListWidget::item { padding:6px; }
         """)
 
-        # Olaylar
+   
         self.btn_new.clicked.connect(self.create_note)
         self.btn_del.clicked.connect(self.delete_note)
         self.btn_ren.clicked.connect(self.rename_note)
         self.btn_open_dir.clicked.connect(lambda: webbrowser.open(NOTES_DIR.as_uri()))
         self.save_timer.timeout.connect(self.save_current)
 
-        # Capture
         self.worker = CaptureWorker()
         self.worker.captured_text.connect(self.on_captured_text)
         self.worker.status.connect(self.on_status)
         self.btn_start.clicked.connect(self.on_start)
         self.btn_stop.clicked.connect(self.on_stop)
 
-        # Boyamalar (ExtraSelections meta)
+        
         self._hl_ranges = []  # [{'start': int, 'length': int, 'color': '#RRGGBB', 'text': '...'}]
 
-        # Dosyaları yükle
+       
         self.reload_list()
 
-    # ---------- Yardımcı: aralıkları temizle ----------
+  
     def _sanitize_ranges(self):
         doc_len = max(0, self.editor.document().characterCount() - 1)
         cleaned = []
@@ -268,7 +264,7 @@ class MainWindow(QMainWindow):
                 cleaned.append({"start": s, "length": l, "color": col})
         self._hl_ranges = cleaned
 
-    # ---------- Dosya listesi ----------
+  
     def reload_list(self):
         self.listw.clear()
         files = sorted(NOTES_DIR.glob("*.txt"), key=lambda p: p.name.lower())
@@ -283,7 +279,7 @@ class MainWindow(QMainWindow):
         sel = self.listw.selectedItems()
         return sel[0] if sel else None
 
-    # ---------- Eylemler ----------
+
     def create_note(self):
         name, ok = QInputDialog.getText(self, "Yeni Not", "Dosya adı:")
         if not ok: return
@@ -341,7 +337,6 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Hata", str(e))
 
-    # ---------- Editör / Kaydetme ----------
     def on_selection_changed(self):
         it = self.current_item()
         if not it:
@@ -376,7 +371,7 @@ class MainWindow(QMainWindow):
             highlight_sidecar(self.current_file).write_text(
                 json.dumps(self._hl_ranges, ensure_ascii=False, indent=2), encoding="utf-8"
             )
-            # self.editor.document().clearUndoRedoStacks()  # kapalı kalsın
+            # self.editor.document().clearUndoRedoStacks()  
             self.status.setText("Otomatik kaydedildi.")
         except Exception as e:
             self.status.setText(f"Kaydetme hatası: {e}")
@@ -385,7 +380,7 @@ class MainWindow(QMainWindow):
         cur = self.editor.textCursor()
         cur.insertText(SEPARATOR)
 
-    # ---------- Capture entegrasyonu ----------
+
     def on_start(self):
         self.worker.start()
         self.btn_start.setEnabled(False)
@@ -427,7 +422,7 @@ class MainWindow(QMainWindow):
     def on_status(self, s: str):
         self.status.setText(f"Durum: {s}")
 
-    # ---------- Boyama ----------
+    
     def apply_highlight(self, color_hex: str | None):
         if not self.current_file:
             return
